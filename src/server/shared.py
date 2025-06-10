@@ -1,4 +1,11 @@
-# mcp_server.py
+# shared.py
+"""
+Shared components for the Research Aggregation MCP Server
+
+This module contains common functionality used by both stdio and HTTP transports,
+including tool handlers, schemas, and utility functions.
+"""
+
 import asyncio
 import json
 import logging
@@ -15,7 +22,7 @@ from rich.logging import RichHandler
 # Our existing modules
 import sys
 from pathlib import Path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.arxiv.client import AsyncArxivClient, ArxivAPIError
@@ -28,20 +35,6 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True, show_path=False, markup=True)]
 )
 logger = logging.getLogger(__name__)
-
-# Create MCP server instance
-server = Server("research-aggregation-mcp")
-
-# Initialize our arXiv components with error handling
-try:
-    arxiv_client = AsyncArxivClient(delay_seconds=3.0)
-    parser = ArxivXMLParser()
-    logger.info("✅ [bold green]ArXiv client and parser initialized successfully[/bold green]")
-except Exception as e:
-    logger.error(f"❌ [bold red]Failed to initialize arXiv components: {e}[/bold red]")
-    raise
-
-logger.info("🚀 [bold green]Research Aggregation MCP Server fully initialized[/bold green]")
 
 # Define shared input schemas
 DATE_RANGE_SCHEMA = {
@@ -60,80 +53,107 @@ DATE_RANGE_SCHEMA = {
     }
 }
 
-@server.list_tools()
-async def list_tools() -> List[Tool]:
-    """Register available tools with the MCP server"""
-    return [
-        Tool(
-            name="search_trading_papers",
-            description="Search for algorithmic trading and quantitative finance papers including high-frequency trading, market making, and trading systems",
-            inputSchema={
-                "type": "object",
-                "properties": DATE_RANGE_SCHEMA,
-                "required": []
-            }
-        ),
-        Tool(
-            name="search_quant_finance_papers",
-            description="Search for quantitative finance papers including derivatives pricing, risk management, portfolio optimization, mathematical finance, and statistical finance",
-            inputSchema={
-                "type": "object",
-                "properties": DATE_RANGE_SCHEMA,
-                "required": []
-            }
-        ),
-        Tool(
-            name="get_recent_papers",
-            description="Get papers from the last X months with optional category filtering. Useful for finding recent research in specific areas",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "months_back": {
-                        "type": "integer",
-                        "description": "Number of months to look back (required)",
-                        "minimum": 1,
-                        "maximum": 60
-                    },
-                    "category": {
-                        "type": "string",
-                        "description": "ArXiv category (optional, defaults to all quantitative finance 'q-fin.*'). Examples: 'q-fin.TR' for trading, 'q-fin.MF' for mathematical finance",
-                        "default": "q-fin.*"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of papers to return (default: 200, max: 2000)",
-                        "default": 200
-                    }
-                },
-                "required": ["months_back"]
-            }
-        )
-    ]
-
-@server.call_tool()
-async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
-    """Handle tool calls from Claude"""
+# Initialize our arXiv components
+def initialize_arxiv_components():
+    """Initialize arXiv client and parser with error handling"""
     try:
-        logger.debug(f"🔧 [cyan]Tool called: {name}[/cyan] with arguments: {arguments}")
-        
-        if name == "search_trading_papers":
-            result = await handle_search_trading_papers(arguments)
-        elif name == "search_quant_finance_papers":
-            result = await handle_search_quant_finance_papers(arguments)
-        elif name == "get_recent_papers":
-            result = await handle_get_recent_papers(arguments)
-        else:
-            raise ValueError(f"Unknown tool: {name}")
-            
-        return [TextContent(type="text", text=result)]
-        
+        arxiv_client = AsyncArxivClient(delay_seconds=3.0)
+        parser = ArxivXMLParser()
+        logger.info("✅ [bold green]ArXiv client and parser initialized successfully[/bold green]")
+        return arxiv_client, parser
     except Exception as e:
-        error_msg = f"❌ Error in tool '{name}': {str(e)}"
-        logger.error(f"[red]{error_msg}[/red]")
-        return [TextContent(type="text", text=error_msg)]
+        logger.error(f"❌ [bold red]Failed to initialize arXiv components: {e}[/bold red]")
+        raise
 
-async def handle_search_trading_papers(arguments: Dict[str, Any]) -> str:
+def create_mcp_server() -> Server:
+    """Create and configure the MCP server with tool handlers"""
+    # Initialize components for the server
+    arxiv_client, parser = initialize_arxiv_components()
+    
+    # Create MCP server instance
+    server = Server("research-aggregation-mcp")
+    
+    @server.list_tools()
+    async def list_tools() -> List[Tool]:
+        """Register available tools with the MCP server"""
+        return [
+            Tool(
+                name="search_trading_papers",
+                description="Search for algorithmic trading and quantitative finance papers including high-frequency trading, market making, and trading systems",
+                inputSchema={
+                    "type": "object",
+                    "properties": DATE_RANGE_SCHEMA,
+                    "required": []
+                }
+            ),
+            Tool(
+                name="search_quant_finance_papers",
+                description="Search for quantitative finance papers including derivatives pricing, risk management, portfolio optimization, mathematical finance, and statistical finance",
+                inputSchema={
+                    "type": "object",
+                    "properties": DATE_RANGE_SCHEMA,
+                    "required": []
+                }
+            ),
+            Tool(
+                name="get_recent_papers",
+                description="Get papers from the last X months with optional category filtering. Useful for finding recent research in specific areas",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "months_back": {
+                            "type": "integer",
+                            "description": "Number of months to look back (required)",
+                            "minimum": 1,
+                            "maximum": 60
+                        },
+                        "category": {
+                            "type": "string",
+                            "description": "ArXiv category (optional, defaults to all quantitative finance 'q-fin.*'). Examples: 'q-fin.TR' for trading, 'q-fin.MF' for mathematical finance",
+                            "default": "q-fin.*"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Maximum number of papers to return (default: 200, max: 2000)",
+                            "default": 200
+                        }
+                    },
+                    "required": ["months_back"]
+                }
+            )
+        ]
+
+    @server.call_tool()
+    async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle tool calls from Claude"""
+        try:
+            logger.debug(f"🔧 [cyan]Tool called: {name}[/cyan] with arguments: {arguments}")
+            
+            if name == "search_trading_papers":
+                result = await handle_search_trading_papers(arguments, parser)
+            elif name == "search_quant_finance_papers":
+                result = await handle_search_quant_finance_papers(arguments, parser)
+            elif name == "get_recent_papers":
+                result = await handle_get_recent_papers(arguments, parser)
+            else:
+                raise ValueError(f"Unknown tool: {name}")
+                
+            return [TextContent(type="text", text=result)]
+            
+        except Exception as e:
+            error_msg = f"❌ Error in tool '{name}': {str(e)}"
+            logger.error(f"[red]{error_msg}[/red]")
+            return [TextContent(type="text", text=error_msg)]
+    
+    logger.info("🚀 [bold green]Research Aggregation MCP Server fully initialized[/bold green]")
+    return server
+
+async def handle_search_trading_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
     """Handle search_trading_papers tool"""
+    # Initialize parser if not provided
+    if parser is None:
+        parser = ArxivXMLParser()
+    
     try:
         # Extract parameters with defaults
         start_date = arguments.get("start_date")
@@ -174,8 +194,12 @@ async def handle_search_trading_papers(arguments: Dict[str, Any]) -> str:
         logger.error(f"💥 Unexpected error: [red]{e}[/red]")
         raise
 
-async def handle_search_quant_finance_papers(arguments: Dict[str, Any]) -> str:
+async def handle_search_quant_finance_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
     """Handle search_quant_finance_papers tool"""
+    # Initialize parser if not provided
+    if parser is None:
+        parser = ArxivXMLParser()
+    
     try:
         # Extract parameters with defaults
         start_date = arguments.get("start_date")
@@ -216,8 +240,12 @@ async def handle_search_quant_finance_papers(arguments: Dict[str, Any]) -> str:
         logger.error(f"💥 Unexpected error: [red]{e}[/red]")
         raise
 
-async def handle_get_recent_papers(arguments: Dict[str, Any]) -> str:
+async def handle_get_recent_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
     """Handle get_recent_papers tool"""
+    # Initialize parser if not provided
+    if parser is None:
+        parser = ArxivXMLParser()
+    
     try:
         # Extract required and optional parameters
         months_back = arguments.get("months_back")
@@ -284,25 +312,3 @@ def get_category_breakdown(papers) -> Dict[str, int]:
         for category in paper.categories:
             category_counts[category] = category_counts.get(category, 0) + 1
     return dict(sorted(category_counts.items(), key=lambda x: x[1], reverse=True))
-
-if __name__ == "__main__":
-    from mcp.server.stdio import stdio_server
-    from mcp.server.models import InitializationOptions
-    from mcp.server.lowlevel import NotificationOptions
-
-    async def main():
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(
-                read_stream, 
-                write_stream, 
-                InitializationOptions(
-                    server_name="research-aggregation-mcp",
-                    server_version="0.1.0",
-                    capabilities=server.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={}
-                    )
-                )
-            )
-
-    asyncio.run(main())

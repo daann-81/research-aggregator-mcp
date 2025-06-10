@@ -15,7 +15,7 @@ from pathlib import Path
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
-from mcp_server import (
+from server.shared import (
     handle_search_trading_papers,
     handle_search_quant_finance_papers, 
     handle_get_recent_papers
