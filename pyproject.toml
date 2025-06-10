@@ -4,10 +4,24 @@ version = "0.0.1"
 description = ""
 authors = ["Dan Madeira <dan.madeira@proton.me>"]
 readme = "README.md"
+packages = [{include = "arxiv", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
+requests = "^2.32.4"
+rich = "^14.0.0"
+mcp = "^1.9.3"
+aiohttp = "^3.12.12"
 
+[tool.poetry.group.test.dependencies]
+pytest = "^7.0.0"
+pytest-asyncio = "^0.21.0"
+aioresponses = "^0.7.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["test"]
+addopts = "-v"
 
 [build-system]
 requires = ["poetry-core"]
