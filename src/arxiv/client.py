@@ -7,17 +7,7 @@ from datetime import datetime
 from typing import Dict, Optional, List
 import random
 
-from rich.logging import RichHandler
-
-# Setup Rich logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(message)s",
-    handlers=[RichHandler(rich_tracebacks=True, show_path=False, markup=True)],
-)
-
 logger = logging.getLogger(__name__)
-
 
 class ArxivAPIError(Exception):
     """Custom exception for arXiv API errors"""

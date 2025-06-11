@@ -23,9 +23,13 @@ When connecting to claude desktop, find ~/.config/Claude/claude_desktop_config.j
   }
 }
 
+more details of usage in https://modelcontextprotocol.io/introduction
+
 MCP inspector (only in dev):
 
 run MCP in terminal using: python main.py --transport SSE
 run MCP inspector in different terminal using: npx @modelcontextprotocol/inspector
 
 open up MCP inspector in brower using http://127.0.0.1:XXXX (where XXXX is default of 6274)
+
+mroe details of usage in https://modelcontextprotocol.io/docs/tools/inspector

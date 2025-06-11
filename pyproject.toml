@@ -20,6 +20,10 @@ pytest = "^7.0.0"
 pytest-asyncio = "^0.21.0"
 aioresponses = "^0.7.0"
 
+
+[tool.poetry.group.dev.dependencies]
+pyopenssl = "^25.1.0"
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["test"]
