@@ -10,7 +10,16 @@ import logging
 from .shared import handle_search_trading_papers, handle_search_quant_finance_papers, handle_get_recent_papers
 from src.arxiv.parser import ArxivXMLParser
 
+# Rich logging
+from rich.logging import RichHandler
+
 logger = logging.getLogger(__name__)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(name)s] [%(levelname)s] %(message)s',
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False, markup=True)]
+)
 
 async def run_http(host: str = "0.0.0.0", port: int = 3001):
     """Run server with HTTP/SSE transport using FastMCP approach"""

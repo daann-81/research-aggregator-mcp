@@ -5,8 +5,14 @@ import logging
 from rich.console import Console
 from rich.table import Table
 
-from arxiv.client import AsyncArxivClient, ArxivAPIError
-from arxiv.parser import ArxivXMLParser
+import sys
+from pathlib import Path
+
+src_path = Path(__file__).parent.parent
+sys.path.insert(0, str(src_path))
+
+from src.arxiv.client import AsyncArxivClient, ArxivAPIError
+from src.arxiv.parser import ArxivXMLParser
 
 logger = logging.getLogger(__name__)
 console = Console()

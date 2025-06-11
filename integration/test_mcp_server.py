@@ -12,10 +12,11 @@ from rich.json import JSON
 # Import our MCP server functions
 import sys
 from pathlib import Path
-src_path = Path(__file__).parent / "src"
+
+src_path = Path(__file__).parent.parent
 sys.path.insert(0, str(src_path))
 
-from server.shared import (
+from src.server.shared import (
     handle_search_trading_papers,
     handle_search_quant_finance_papers, 
     handle_get_recent_papers

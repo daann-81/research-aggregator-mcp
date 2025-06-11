@@ -8,14 +8,9 @@ Supports both stdio and HTTP/SSE transports for connecting to Claude Desktop.
 import asyncio
 import argparse
 import logging
-from rich.logging import RichHandler
-
-# Setup basic logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(message)s",
-    handlers=[RichHandler(rich_tracebacks=True, show_path=False, markup=True)]
-)
+  
+from util.logging import setup_logging
+  
 logger = logging.getLogger(__name__)
 
 def main():
@@ -59,9 +54,11 @@ Examples:
     # Import and run the appropriate server
     if args.transport == "stdio":
         from server.stdio_server import run_stdio
+        setup_logging(logToStdout=False)
         asyncio.run(run_stdio())
     elif args.transport == "sse":
         from server.http_server import run_http
+        setup_logging(logToStdout=True)
         asyncio.run(run_http(args.host, args.port))
 
 if __name__ == "__main__":

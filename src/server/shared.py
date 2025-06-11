@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # MCP imports
 from mcp.server import Server
@@ -31,7 +31,7 @@ from src.arxiv.parser import ArxivXMLParser
 # Setup Rich logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format="%(message)s",
+    format='%(asctime)s [%(name)s] [%(levelname)s] %(message)s',
     handlers=[RichHandler(rich_tracebacks=True, show_path=False, markup=True)]
 )
 logger = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ def create_mcp_server() -> Server:
     logger.info("🚀 [bold green]Research Aggregation MCP Server fully initialized[/bold green]")
     return server
 
-async def handle_search_trading_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
+async def handle_search_trading_papers(arguments: Dict[str, Any], parser: Optional[ArxivXMLParser] = None) -> str:
     """Handle search_trading_papers tool"""
     # Initialize parser if not provided
     if parser is None:
@@ -194,7 +194,7 @@ async def handle_search_trading_papers(arguments: Dict[str, Any], parser: ArxivX
         logger.error(f"💥 Unexpected error: [red]{e}[/red]")
         raise
 
-async def handle_search_quant_finance_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
+async def handle_search_quant_finance_papers(arguments: Dict[str, Any], parser: Optional[ArxivXMLParser] = None) -> str:
     """Handle search_quant_finance_papers tool"""
     # Initialize parser if not provided
     if parser is None:
@@ -240,7 +240,7 @@ async def handle_search_quant_finance_papers(arguments: Dict[str, Any], parser: 
         logger.error(f"💥 Unexpected error: [red]{e}[/red]")
         raise
 
-async def handle_get_recent_papers(arguments: Dict[str, Any], parser: ArxivXMLParser = None) -> str:
+async def handle_get_recent_papers(arguments: Dict[str, Any], parser: Optional[ArxivXMLParser] = None) -> str:
     """Handle get_recent_papers tool"""
     # Initialize parser if not provided
     if parser is None:

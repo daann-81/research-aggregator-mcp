@@ -4,7 +4,7 @@ version = "0.0.1"
 description = ""
 authors = ["Dan Madeira <dan.madeira@proton.me>"]
 readme = "README.md"
-packages = [{include = "arxiv", from = "src"}]
+packages = [{include = "*", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"

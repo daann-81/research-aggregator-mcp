@@ -32,34 +32,24 @@ RUN poetry config virtualenvs.create false
 WORKDIR /app
 
 # Copy Poetry configuration files
-COPY pyproject.toml poetry.lock* ./
-
-# Debug Poetry setup
-RUN echo "=== Poetry Debug Info ===" && \
-    poetry --version && \
-    poetry config --list && \
-    echo "=== pyproject.toml content ===" && \
-    cat pyproject.toml && \
-    echo "=== Current directory ===" && \
-    ls -la
+COPY README.md pyproject.toml poetry.lock* ./
 
 # Install dependencies based on build argument
 RUN echo "INSTALL_DEV is set to: $INSTALL_DEV" && \
     if [ "$INSTALL_DEV" = "true" ] ; then \
-        echo "Installing with dev dependencies..." && poetry install --no-root --verbose; \
+        echo "Installing with dev dependencies..." \
+        && poetry install --no-root --verbose; \
     else \
-        echo "Installing without dev dependencies..." && poetry install --no-dev --verbose; \
+        echo "Installing without dev dependencies..." \
+        && poetry install --only=main --no-root --verbose; \
     fi
 
 # Copy application code (excluding files in .dockerignore)
 COPY . .
 
-
-# For stdio MCP (no port needed)
-# CMD ["python", "-m", "your_mcp_module"]
-
 # For development - keeps container alive
-CMD ["tail", "-f", "/dev/null"]
-
-# Production command (uncomment and modify as needed):
-# CMD ["python", "-m", "research_mcp"]
+CMD if [ "$INSTALL_DEV" = "true" ] ; then \
+        tail -f /dev/null ; \
+    else \
+        python src/main.py ; \
+    fi

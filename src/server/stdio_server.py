@@ -8,11 +8,14 @@ the low-level MCP server API.
 
 import asyncio
 import logging
+import sys
 from mcp.server.stdio import stdio_server
 from mcp.server.models import InitializationOptions
 from mcp.server.lowlevel import NotificationOptions
+from rich.logging import RichHandler
 
 from .shared import create_mcp_server
+
 
 logger = logging.getLogger(__name__)
 

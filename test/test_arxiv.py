@@ -6,8 +6,8 @@ import aiohttp
 from aioresponses import aioresponses
 
 # Clean imports now that package is properly installed
-from arxiv.client import AsyncArxivClient, ArxivAPIError
-from arxiv.parser import ArxivXMLParser, ArxivPaper
+from src.arxiv.client import AsyncArxivClient, ArxivAPIError
+from src.arxiv.parser import ArxivXMLParser, ArxivPaper
 
 
 # Sample XML response for testing
