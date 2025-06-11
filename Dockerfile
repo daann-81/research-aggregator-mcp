@@ -16,8 +16,19 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install curl (needed for Poetry installer)
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-# Install git for development
-RUN if [ "$INSTALL_DEV" = "true" ] ; then apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* ; fi
+# Install git and Node.js for development
+RUN if [ "$INSTALL_DEV" = "true" ] ; then \
+        apt-get update && \
+        apt-get install -y git && \
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+        apt-get install -y nodejs && \
+        rm -rf /var/lib/apt/lists/* ; \
+    fi
+
+# Install MCP Inspector for development
+RUN if [ "$INSTALL_DEV" = "true" ] ; then \
+        npm install -g @modelcontextprotocol/inspector ; \
+    fi
 
 ### install poetry ###
 
