@@ -12,9 +12,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Any
 import json
-import re
-
-from rich.logging import RichHandler
 
 # Setup Rich logging
 logger = logging.getLogger(__name__)

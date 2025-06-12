@@ -128,10 +128,11 @@ RUN if [ "$INSTALL_DEV" = "true" ] ; then \
         rm -rf /var/lib/apt/lists/* ; \
     fi
 
-# Install MCP Inspector for development
+# Install MCP Inspector and claude code for development
 RUN if [ "$INSTALL_DEV" = "true" ] ; then \
-        npm install -g @modelcontextprotocol/inspector ; \
-    fi
+  npm install -g @modelcontextprotocol/inspector && \
+  npm install -g @anthropic-ai/claude-code ; \
+fi
 
 ### install poetry ###
 

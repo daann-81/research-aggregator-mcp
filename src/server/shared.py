@@ -20,6 +20,7 @@ sys.path.insert(0, str(project_root))
 
 from src.arxiv.client import AsyncArxivClient, ArxivAPIError
 from src.arxiv.parser import ArxivXMLParser
+from src.common.paper import AcademicPaper, from_arxiv_paper
 
 # Setup Rich logging
 logger = logging.getLogger(__name__)
@@ -78,18 +79,21 @@ async def handle_search_trading_papers(arguments: Dict[str, Any], parser: Option
             # Get XML data
             xml_data = await client.search_trading_papers(start_date, end_date, max_results)
             
-            # Parse to structured objects
-            papers = parser.parse_response(xml_data)
+            # Parse to ArxivPaper objects
+            arxiv_papers = parser.parse_response(xml_data)
+            
+            # Convert to AcademicPaper objects
+            academic_papers = [from_arxiv_paper(paper) for paper in arxiv_papers]
             
             # Convert to JSON format for Claude
             result = {
                 "search_query": "Trading and Market Microstructure Papers",
                 "date_range": {"start": start_date, "end": end_date},
-                "total_found": len(papers),
-                "papers": [paper_to_dict(paper) for paper in papers]
+                "total_found": len(academic_papers),
+                "papers": [paper.to_dict() for paper in academic_papers]
             }
             
-            logger.info(f"✅ Found [bold green]{len(papers)}[/bold green] trading papers")
+            logger.info(f"✅ Found [bold green]{len(academic_papers)}[/bold green] trading papers")
             return json.dumps(result, indent=2, default=str)
             
     except ArxivAPIError as e:
@@ -123,19 +127,22 @@ async def handle_search_quant_finance_papers(arguments: Dict[str, Any], parser: 
             # Get XML data for all quantitative finance categories
             xml_data = await client.search_all_quant_finance(start_date, end_date, max_results)
             
-            # Parse to structured objects
-            papers = parser.parse_response(xml_data)
+            # Parse to ArxivPaper objects
+            arxiv_papers = parser.parse_response(xml_data)
+            
+            # Convert to AcademicPaper objects
+            academic_papers = [from_arxiv_paper(paper) for paper in arxiv_papers]
             
             # Convert to JSON format for Claude
             result = {
                 "search_query": "All Quantitative Finance Papers",
                 "date_range": {"start": start_date, "end": end_date},
-                "total_found": len(papers),
-                "category_breakdown": get_category_breakdown(papers),
-                "papers": [paper_to_dict(paper) for paper in papers]
+                "total_found": len(academic_papers),
+                "category_breakdown": get_category_breakdown(academic_papers),
+                "papers": [paper.to_dict() for paper in academic_papers]
             }
             
-            logger.info(f"✅ Found [bold green]{len(papers)}[/bold green] quant finance papers")
+            logger.info(f"✅ Found [bold green]{len(academic_papers)}[/bold green] quant finance papers")
             return json.dumps(result, indent=2, default=str)
             
     except ArxivAPIError as e:
@@ -170,8 +177,11 @@ async def handle_get_recent_papers(arguments: Dict[str, Any], parser: Optional[A
             # Use the general search method with the specified category
             xml_data = await client.search_papers(f"cat:{category}", start_date, end_date, max_results)
             
-            # Parse to structured objects
-            papers = parser.parse_response(xml_data)
+            # Parse to ArxivPaper objects
+            arxiv_papers = parser.parse_response(xml_data)
+            
+            # Convert to AcademicPaper objects
+            academic_papers = [from_arxiv_paper(paper) for paper in arxiv_papers]
             
             # Convert to JSON format for Claude
             result = {
@@ -179,11 +189,11 @@ async def handle_get_recent_papers(arguments: Dict[str, Any], parser: Optional[A
                 "months_back": months_back,
                 "date_range": {"start": start_date, "end": end_date},
                 "category": category,
-                "total_found": len(papers),
-                "papers": [paper_to_dict(paper) for paper in papers]
+                "total_found": len(academic_papers),
+                "papers": [paper.to_dict() for paper in academic_papers]
             }
             
-            logger.info(f"✅ Found [bold green]{len(papers)}[/bold green] papers in {category}")
+            logger.info(f"✅ Found [bold green]{len(academic_papers)}[/bold green] papers in {category}")
             return json.dumps(result, indent=2, default=str)
             
     except ArxivAPIError as e:
@@ -194,26 +204,14 @@ async def handle_get_recent_papers(arguments: Dict[str, Any], parser: Optional[A
         raise
 
 def paper_to_dict(paper) -> Dict[str, Any]:
-    """Convert ArxivPaper object to dictionary for JSON serialization"""
-    return {
-        "id": paper.id,
-        "title": paper.title,
-        "authors": paper.authors,
-        "abstract": paper.abstract,
-        "submitted_date": paper.submitted_date.isoformat(),
-        "updated_date": paper.updated_date.isoformat(),
-        "categories": paper.categories,
-        "pdf_url": paper.pdf_url,
-        "arxiv_url": paper.arxiv_url,
-        "journal_ref": paper.journal_ref,
-        "doi": paper.doi,
-        "comments": paper.comments
-    }
+    """Convert AcademicPaper object to dictionary for JSON serialization"""
+    return paper.to_dict()
 
 def get_category_breakdown(papers) -> Dict[str, int]:
     """Get count of papers by category"""
     category_counts = {}
     for paper in papers:
-        for category in paper.categories:
-            category_counts[category] = category_counts.get(category, 0) + 1
+        if paper.categories:  # Handle None case for AcademicPaper
+            for category in paper.categories:
+                category_counts[category] = category_counts.get(category, 0) + 1
     return dict(sorted(category_counts.items(), key=lambda x: x[1], reverse=True))

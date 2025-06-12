@@ -76,6 +76,94 @@ python src/main.py --transport streamable --port 3001
 python src/main.py --transport sse --host 127.0.0.1 --port 8080
 ```
 
+## Development Methodology
+
+### Test-Driven Development (TDD) Approach
+**ALWAYS follow TDD methodology for all new features and significant changes:**
+
+1. **Write Failing Tests First**: Write comprehensive test cases that define expected behavior and MUST FAIL initially
+2. **Create Minimal Implementation**: Create skeleton implementations that make tests runnable but failing
+3. **Make Tests Pass**: Implement real functionality iteratively to make tests pass one by one
+4. **Refactor**: Clean up code while keeping tests passing
+
+### Critical TDD Rules
+- **Tests MUST fail initially** - this proves they're testing the right behavior
+- **NO pytest.skip()** - tests should run and fail, not be skipped
+- **NO commented out assertions** - all test assertions should be active from day one
+- **Skeleton implementations return dummy data** - enough to make tests runnable but wrong enough to fail
+
+### TDD Implementation Planning Template
+When asked to implement new features, ALWAYS structure your plan as follows:
+
+```markdown
+# Feature Implementation Plan (TDD Approach)
+
+## Overview
+[Brief description of what needs to be implemented]
+
+## Phase 1: Write Failing Tests First
+### Test Files to Create:
+- `test/test_[feature].py` - Core functionality tests
+
+### Test Requirements:
+- ✅ All tests must RUN (no syntax errors)
+- ✅ All tests must FAIL initially (proving they test expected behavior)
+- ✅ NO pytest.skip() statements
+- ✅ NO commented out assertions
+- ✅ Full assertion coverage for expected behavior
+
+### Test Categories:
+- **Happy Path Tests**: Normal usage scenarios with expected outputs
+- **Edge Case Tests**: Boundary conditions, empty inputs, malformed data
+- **Error Handling Tests**: Invalid inputs with expected exceptions
+- **Type Validation Tests**: Ensure correct types returned
+
+## Phase 2: Create Skeleton Implementation
+### Files to Create:
+- `src/[module]/[feature].py` - Main implementation with dummy returns
+
+### Skeleton Requirements:
+- ✅ All functions/classes defined with proper signatures
+- ✅ Return dummy/wrong values that make tests FAIL
+- ✅ Include proper type hints and docstrings
+- ✅ Tests can run but should fail on assertions
+
+## Phase 3: Make Tests Pass Incrementally
+### Implementation Order:
+1. [First test group to implement - e.g., basic functionality]
+2. [Second test group - e.g., edge cases]
+3. [Third test group - e.g., error handling]
+4. [Continue until all tests pass]
+
+## Phase 4: Integration and Regression Testing
+- Update existing code to use new functionality
+- Run full test suite to ensure no regressions
+```
+
+### Verification Checklist
+Before considering TDD phase complete:
+- [ ] All tests run without syntax errors
+- [ ] All tests initially FAIL (before real implementation)
+- [ ] No pytest.skip() statements in codebase
+- [ ] No commented out test assertions
+- [ ] Skeleton returns dummy data that causes test failures
+- [ ] Test failures clearly show what needs to be implemented
+
+### Automatic Testing Rules
+**ALWAYS run tests automatically during development:**
+- **After implementing any function** - immediately run relevant tests
+- **After fixing code** - re-run failed tests to verify fixes
+- **Before declaring completion** - run full test suite
+- **NO prompting required** - just run tests as part of normal workflow
+- **Show test results** - always include pass/fail status in responses
+
+### Test Running Guidelines
+- Use `python -m pytest path/to/test.py::TestClass::test_method -v` for specific tests
+- Use `python -m pytest path/to/test.py -v` for test file
+- Use `python -m pytest` for full suite
+- Always include `-v` flag for verbose output
+- Run tests immediately after code changes to verify functionality
+
 ## Important Implementation Details
 
 ### Rate Limiting

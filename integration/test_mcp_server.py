@@ -45,7 +45,7 @@ async def test_search_trading_papers():
             console.print(f"Title: {paper['title']}")
             console.print(f"Authors: {', '.join(paper['authors'][:3])}")
             console.print(f"Categories: {', '.join(paper['categories'])}")
-            console.print(f"Submitted: {paper['submitted_date'][:10]}")
+            console.print(f"Submitted: {paper['publication_date'][:10]}")
         
         return True
         
