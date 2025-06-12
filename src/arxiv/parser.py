@@ -150,14 +150,16 @@ class ArxivXMLParser:
         return authors
     
     def _parse_date(self, date_elem: Optional[ET.Element]) -> datetime:
-        """Parse date element into datetime object"""
+        """Parse date element into datetime object as naive UTC datetime"""
         if date_elem is None or not date_elem.text:
             return datetime.now()
         
         try:
             # arXiv dates are in ISO format: 2023-12-15T18:30:45Z
             date_str = date_elem.text.replace('Z', '+00:00')
-            return datetime.fromisoformat(date_str)
+            dt = datetime.fromisoformat(date_str)
+            # Convert to naive datetime in UTC for consistency
+            return dt.replace(tzinfo=None)
         except ValueError:
             logger.warning(f"⚠️  Could not parse date: {date_elem.text}")
             return datetime.now()

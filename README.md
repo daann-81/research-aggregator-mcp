@@ -27,9 +27,12 @@ more details of usage in https://modelcontextprotocol.io/introduction
 
 MCP inspector (only in dev):
 
-run MCP in terminal using: poetry run python src/main.py --transport sse
+run MCP in terminal using: poetry run python src/main.py --transport streamable
 run MCP inspector in different terminal using: npx @modelcontextprotocol/inspector
 
 open up MCP inspector in brower using http://127.0.0.1:XXXX (where XXXX is default of 6274)
+
+transport type = Streamable HTTP
+url = http://localhost:3001/mcp
 
 mroe details of usage in https://modelcontextprotocol.io/docs/tools/inspector

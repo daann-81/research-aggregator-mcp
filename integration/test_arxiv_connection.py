@@ -208,5 +208,7 @@ async def run_all_tests():
         raise
 
 if __name__ == "__main__":
+    from src.util.logging import setup_logging
+    setup_logging()
     # Run the async test suite
     asyncio.run(run_all_tests())

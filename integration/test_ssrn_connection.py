@@ -176,11 +176,11 @@ async def test_recent_papers():
 
     async with AsyncSSRNClient(delay_seconds=3.0) as client:
         try:
-            months_back = 6
+            months_back = 1
             console.print(f"🔍 Searching for papers from last {months_back} months")
 
             papers = await client.get_recent_papers(
-                months_back=months_back, max_results=15
+                months_back=months_back, max_results=1500
             )
 
             if papers:
@@ -284,7 +284,7 @@ async def display_paper_details(paper: SSRNPaper):
     console.print(table)
 
 
-async def run_all_tests():
+async def run_all_tests(tests=None):
     """Run all SSRN integration tests"""
     console.print(Panel("🚀 SSRN API Integration Test Suite", style="bold green"))
 
@@ -295,7 +295,7 @@ async def run_all_tests():
         ("Author Search", test_author_search),
         ("Recent Papers", test_recent_papers),
         ("Finance Papers", test_finance_papers_search),
-    ]
+    ] if tests is None else tests
 
     results = []
 
@@ -335,7 +335,7 @@ async def run_all_tests():
 async def main():
     """Main test function"""
     setup_logging(logToStdout=True)
-    await run_all_tests()
+    await run_all_tests([("Recent Papers", test_recent_papers)])
 
 
 if __name__ == "__main__":

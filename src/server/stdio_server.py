@@ -21,14 +21,11 @@ from rich.logging import RichHandler
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 
-from .shared import DATE_RANGE_SCHEMA, initialize_arxiv_components, handle_search_trading_papers, handle_search_quant_finance_papers, handle_get_recent_papers
+from .shared import handle_search_papers, handle_get_all_recent_papers
 
 logger = logging.getLogger(__name__)
 def create_mcp_server() -> Server:
     """Create and configure the MCP server with tool handlers"""
-    # Initialize components for the server
-    arxiv_client, parser = initialize_arxiv_components()
-    
     # Create MCP server instance
     server = Server("research-aggregation-mcp")
     
@@ -37,26 +34,40 @@ def create_mcp_server() -> Server:
         """Register available tools with the MCP server"""
         return [
             Tool(
-                name="search_trading_papers",
-                description="Search for algorithmic trading and quantitative finance papers including high-frequency trading, market making, and trading systems",
+                name="search_papers",
+                description="Search for academic papers across multiple sources (arXiv, SSRN) with optional source filtering. Supports general search queries with source-specific filtering.",
                 inputSchema={
                     "type": "object",
-                    "properties": DATE_RANGE_SCHEMA,
-                    "required": []
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query (required). Examples: 'machine learning', 'algorithmic trading', 'risk management'"
+                        },
+                        "source": {
+                            "type": "string",
+                            "description": "Source to search (optional, defaults to 'all'). Options: 'all', 'arxiv', 'ssrn'",
+                            "enum": ["all", "arxiv", "ssrn"],
+                            "default": "all"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Maximum number of papers to return (default: 20, max: 100)",
+                            "default": 20,
+                            "minimum": 1,
+                            "maximum": 100
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "description": "Search timeout in seconds (default: 30.0)",
+                            "default": 30.0
+                        }
+                    },
+                    "required": ["query"]
                 }
             ),
             Tool(
-                name="search_quant_finance_papers",
-                description="Search for quantitative finance papers including derivatives pricing, risk management, portfolio optimization, mathematical finance, and statistical finance",
-                inputSchema={
-                    "type": "object",
-                    "properties": DATE_RANGE_SCHEMA,
-                    "required": []
-                }
-            ),
-            Tool(
-                name="get_recent_papers",
-                description="Get papers from the last X months with optional category filtering. Useful for finding recent research in specific areas",
+                name="get_all_recent_papers",
+                description="Get recent papers from multiple sources (arXiv, SSRN) without category filtering. Returns papers from ALL academic categories, not just finance.",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -66,15 +77,18 @@ def create_mcp_server() -> Server:
                             "minimum": 1,
                             "maximum": 60
                         },
-                        "category": {
+                        "source": {
                             "type": "string",
-                            "description": "ArXiv category (optional, defaults to all quantitative finance 'q-fin.*'). Examples: 'q-fin.TR' for trading, 'q-fin.MF' for mathematical finance",
-                            "default": "q-fin.*"
+                            "description": "Source to search (optional, defaults to 'all'). Options: 'all', 'arxiv', 'ssrn'",
+                            "enum": ["all", "arxiv", "ssrn"],
+                            "default": "all"
                         },
                         "max_results": {
                             "type": "integer",
-                            "description": "Maximum number of papers to return (default: 200, max: 2000)",
-                            "default": 200
+                            "description": "Maximum number of papers to return (default: 50, max: 200)",
+                            "default": 50,
+                            "minimum": 1,
+                            "maximum": 200
                         }
                     },
                     "required": ["months_back"]
@@ -88,12 +102,10 @@ def create_mcp_server() -> Server:
         try:
             logger.debug(f"🔧 [cyan]Tool called: {name}[/cyan] with arguments: {arguments}")
             
-            if name == "search_trading_papers":
-                result = await handle_search_trading_papers(arguments, parser)
-            elif name == "search_quant_finance_papers":
-                result = await handle_search_quant_finance_papers(arguments, parser)
-            elif name == "get_recent_papers":
-                result = await handle_get_recent_papers(arguments, parser)
+            if name == "search_papers":
+                result = await handle_search_papers(arguments)
+            elif name == "get_all_recent_papers":
+                result = await handle_get_all_recent_papers(arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
                 

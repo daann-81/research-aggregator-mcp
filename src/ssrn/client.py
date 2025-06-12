@@ -102,6 +102,9 @@ class AsyncSSRNClient:
         """Make HTTP request to SSRN API with error handling"""
         if not self.session:
             await self.start_session()
+        
+        if not self.session:
+            raise SSRNAPIError("Failed to initialize session")
 
         await self._handle_rate_limit()
 
@@ -129,7 +132,7 @@ class AsyncSSRNClient:
             logger.error(f"🚫 JSON decode error: {e}")
             raise SSRNAPIError(f"Invalid JSON response: {e}")
 
-    async def get_all_papers(self, max_results: int = 2000) -> List[Dict[str, Any]]:
+    async def get_papers(self, max_results: int = 2000, min_date: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Retrieve all papers from SSRN with pagination.
         Uses caching to avoid repeated full downloads.
@@ -139,12 +142,14 @@ class AsyncSSRNClient:
             logger.info(f"📚 Using cached SSRN papers ({len(self._papers_cache)} papers)")
             return self._papers_cache[:max_results]
 
-        logger.info(f"🔄 Fetching all SSRN papers (up to {max_results})")
+        logger.info(f"🔄 Fetching all SSRN papers (up to {max_results} and later than {min_date})")
         all_papers = []
         index = 0
         page_size = 200  # SSRN API maximum
 
-        while len(all_papers) < max_results:
+        isRunning = True
+
+        while isRunning:
             params = {
                 "index": index,
                 "count": min(page_size, max_results - len(all_papers)),
@@ -159,20 +164,36 @@ class AsyncSSRNClient:
                     logger.info(f"📄 No more papers returned at index {index}")
                     break
                 
-                all_papers.extend(papers)
-                logger.info(f"📊 Retrieved {len(papers)} papers (total: {len(all_papers)})")
-                
-                # If we got fewer papers than requested, we've reached the end
-                if len(papers) < page_size:
-                    logger.info("📄 Reached end of SSRN dataset")
-                    break
-                    
-                index += page_size
-                
+                if not min_date:
+                    all_papers.extend(papers)
+                    logger.info(f"📊 Retrieved {len(papers)} papers (total: {len(all_papers)})")
+                    # If we got fewer papers than requested, we've reached the end
+                    if len(papers) < page_size:
+                        logger.info("📄 Reached end of SSRN dataset")
+                        break
+                        
+                    index += page_size
+                else:
+                    # Filter papers by approved date if min_date is provided
+                    for paper in papers:
+                        if isinstance(paper.get("approved_date"), str):
+                            date = datetime.strptime(paper["approved_date"].strip(), '%d %b %Y')
+                            if date >= datetime.fromisoformat(min_date):
+                                all_papers.append(paper)
+                                index += 1
+                            else:
+                                # If we hit a paper before the cutoff, we can stop
+                                logger.info(f"📅 Paper published at {date} before {min_date} - terminating")
+                                isRunning = False
+                                break
+                        else:
+                            logger.warning(f"⚠️ Paper {paper.get('id', 'unknown')} has invalid date format: {paper.get('approved_date')}")
+                                    
             except SSRNAPIError as e:
                 logger.error(f"❌ Error fetching papers at index {index}: {e}")
                 break
-
+            if len(all_papers) > max_results:
+                isRunning = False
         # Update cache
         self._papers_cache = all_papers
         self._cache_timestamp = datetime.now()
@@ -281,7 +302,7 @@ class AsyncSSRNClient:
         """Search papers by text query in titles"""
         logger.info(f"🔍 Searching SSRN papers by text: '{query}'")
         
-        all_papers = await self.get_all_papers(max_results * 5)  # Get more to account for filtering
+        all_papers = await self.get_papers(max_results)  # Get more to account for filtering
         filtered_papers = self._filter_by_text(all_papers, query)
         
         return filtered_papers[:max_results]
@@ -290,7 +311,7 @@ class AsyncSSRNClient:
         """Search papers by author name"""
         logger.info(f"👤 Searching SSRN papers by author: {author_name}")
         
-        all_papers = await self.get_all_papers(max_results * 5)  # Get more to account for filtering
+        all_papers = await self.get_papers(max_results)  # Get more to account for filtering
         filtered_papers = self._filter_by_author(all_papers, author_name)
         
         return filtered_papers[:max_results]
@@ -303,7 +324,7 @@ class AsyncSSRNClient:
         
         logger.info(f"📅 Searching SSRN papers from last {months_back} months")
         
-        all_papers = await self.get_all_papers(max_results * 5)  # Get more to account for filtering
+        all_papers = await self.get_papers(max_results, start_date)  # Get more to account for filtering
         filtered_papers = self._filter_by_date(all_papers, start_date, end_date)
         
         return filtered_papers[:max_results]
@@ -318,7 +339,7 @@ class AsyncSSRNClient:
         
         logger.info(f"💰 Searching SSRN finance papers with keywords: {finance_keywords[:5]}...")
         
-        all_papers = await self.get_all_papers(max_results * 5)  # Get more to account for filtering
+        all_papers = await self.get_papers(max_results)  # Get more to account for filtering
         
         # Filter by finance keywords in title
         filtered_papers = []

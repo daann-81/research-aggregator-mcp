@@ -198,3 +198,6 @@ The server supports multiple transports:
 - `src/arxiv/client.py:155-200` - Core search functionality
 - `src/arxiv/parser.py:39-77` - XML parsing logic
 - `integration/test_mcp_server.py` - MCP server testing examples
+
+## Development Memories
+- For python, always use pytest for testing, including writing fixtures, mocks, etc. do not use unittest

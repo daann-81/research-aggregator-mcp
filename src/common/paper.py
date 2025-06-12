@@ -34,7 +34,7 @@ class AcademicPaper:
     title: str
     authors: List[str]
     publication_date: datetime
-    source: str  # "arXiv" or "SSRN"
+    source: Union[str, List[str]]  # Single source or list for aggregated papers
     url: str
     
     # Optional fields (may be None based on source)
@@ -45,6 +45,7 @@ class AcademicPaper:
     doi: Optional[str] = None
     download_count: Optional[int] = None
     affiliations: Optional[List[str]] = None
+    source_urls: Optional[Dict[str, str]] = None  # Maps source name to URL for aggregated papers
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -53,7 +54,7 @@ class AcademicPaper:
         Returns:
             Dictionary representation suitable for JSON serialization
         """
-        return {
+        result = {
             "id": self.id,
             "title": self.title,
             "authors": self.authors,
@@ -68,6 +69,12 @@ class AcademicPaper:
             "download_count": self.download_count,
             "affiliations": self.affiliations
         }
+        
+        # Add source_urls if present (for aggregated papers)
+        if self.source_urls:
+            result["source_urls"] = self.source_urls
+            
+        return result
     
     def __str__(self) -> str:
         """Human-readable string representation"""
@@ -152,12 +159,17 @@ def from_ssrn_paper(ssrn_paper: SSRNPaper) -> AcademicPaper:
     if not ssrn_paper.title:
         raise ValueError("title cannot be None or empty")
     
+    # Handle missing authors gracefully - some SSRN papers have incomplete data
     if not ssrn_paper.authors:
-        raise ValueError("authors cannot be None or empty")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"⚠️ SSRN paper {ssrn_paper.ssrn_id} has missing authors - using default")
+        clean_authors = ["Unknown Author"]
+    else:
+        clean_authors = _clean_authors(ssrn_paper.authors)
     
     # Clean and normalize fields
     clean_title = _clean_title(ssrn_paper.title)
-    clean_authors = _clean_authors(ssrn_paper.authors)
     
     # Handle affiliations - preserve empty list if explicitly provided
     if ssrn_paper.university_affiliations is not None:
@@ -168,8 +180,9 @@ def from_ssrn_paper(ssrn_paper: SSRNPaper) -> AcademicPaper:
     if not clean_title:
         raise ValueError("title cannot be empty after cleaning")
     
+    # Ensure we always have at least one author after cleaning
     if not clean_authors:
-        raise ValueError("authors cannot be empty after cleaning")
+        clean_authors = ["Unknown Author"]
     
     # Clean download count (handle negative values)
     clean_download_count = _safe_int(ssrn_paper.download_count, 0)
