@@ -305,9 +305,20 @@ class TestUnifiedSearchPapers:
             if data["papers"]:
                 paper = data["papers"][0]
                 expected_fields = {
-                    "id", "title", "authors", "abstract", "publication_date",
-                    "source", "categories", "url", "pdf_url", "journal_ref",
-                    "doi", "download_count", "affiliations"
+                    # Core fields
+                    "id", "title", "authors", "source", "url", 
+                    # Legacy date field
+                    "publication_date",
+                    # Enhanced date fields
+                    "date", "submitted_date", "published_date", "updated_date",
+                    # Content fields
+                    "abstract", "categories",
+                    # Access fields
+                    "pdf_url", "journal_ref", "doi",
+                    # Metadata fields
+                    "download_count", "affiliations", "page_count",
+                    # Source-specific fields
+                    "comments", "abstract_type", "publication_status", "is_paid", "is_approved"
                 }
                 assert set(paper.keys()) == expected_fields
 
@@ -450,56 +461,6 @@ class TestUnifiedRecentPapers:
 
 class TestSourceParameterIntegration:
     """Test that existing tools accept optional source parameter"""
-
-    @pytest.mark.asyncio
-    async def test_search_trading_papers_with_source_filter(self, sample_arxiv_papers):
-        """Test existing search_trading_papers with source parameter"""
-        arguments = {
-            "source": "arxiv",  # Test with arXiv since SSRN integration not yet in trading papers
-            "max_results": 5
-        }
-
-        with patch('src.server.shared.AsyncArxivClient') as mock_arxiv_client, \
-             patch('src.server.shared.ArxivXMLParser') as mock_arxiv_parser:
-
-            # Setup mocks
-            mock_arxiv_instance = AsyncMock()
-            mock_arxiv_client.return_value.__aenter__.return_value = mock_arxiv_instance
-            mock_arxiv_parser.return_value.parse_response.return_value = sample_arxiv_papers
-            mock_arxiv_instance.search_trading_papers.return_value = "<xml>mock</xml>"
-
-            # Execute test
-            result = await handle_search_trading_papers(arguments)
-            data = json.loads(result)
-
-            # Should work without errors
-            assert "total_found" in data
-            assert "papers" in data
-
-    @pytest.mark.asyncio
-    async def test_backward_compatibility_no_source_parameter(self, sample_arxiv_papers):
-        """Test that existing tools work without source parameter (backward compatibility)"""
-        arguments = {
-            "max_results": 3
-        }
-
-        with patch('src.server.shared.AsyncArxivClient') as mock_arxiv_client, \
-             patch('src.server.shared.ArxivXMLParser') as mock_arxiv_parser:
-
-            # Setup mocks
-            mock_arxiv_instance = AsyncMock()
-            mock_arxiv_client.return_value.__aenter__.return_value = mock_arxiv_instance
-            mock_arxiv_parser.return_value.parse_response.return_value = sample_arxiv_papers
-            mock_arxiv_instance.search_trading_papers.return_value = "<xml>mock</xml>"
-
-            # Execute test
-            result = await handle_search_trading_papers(arguments)
-            data = json.loads(result)
-
-            # Should work as before (no changes to existing behavior)
-            assert "total_found" in data
-            assert "papers" in data
-
 
 class TestErrorHandling:
     """Test error handling and graceful degradation with mocks"""

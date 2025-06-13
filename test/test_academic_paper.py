@@ -139,7 +139,20 @@ class TestAcademicPaperSerialization:
             "journal_ref": "Test Journal 2023",
             "doi": "10.1234/serialize.2023",
             "download_count": 750,
-            "affiliations": ["Test University", "Another Institution"]
+            "affiliations": ["Test University", "Another Institution"],
+            # Enhanced date fields
+            "date": "2023-12-25T14:30:00",  # Falls back to publication_date
+            "submitted_date": None,
+            "published_date": None,
+            "updated_date": None,
+            # New metadata fields
+            "page_count": None,
+            # Source-specific fields
+            "comments": None,
+            "abstract_type": None,
+            "publication_status": None,
+            "is_paid": None,
+            "is_approved": None
         }
         
         assert result == expected
@@ -170,7 +183,20 @@ class TestAcademicPaperSerialization:
             "journal_ref": None,
             "doi": None,
             "download_count": None,
-            "affiliations": None
+            "affiliations": None,
+            # Enhanced date fields
+            "date": "2023-01-01T12:00:00",  # Falls back to publication_date
+            "submitted_date": None,
+            "published_date": None,
+            "updated_date": None,
+            # New metadata fields
+            "page_count": None,
+            # Source-specific fields
+            "comments": None,
+            "abstract_type": None,
+            "publication_status": None,
+            "is_paid": None,
+            "is_approved": None
         }
         
         assert result == expected
@@ -205,9 +231,20 @@ class TestAcademicPaperSerialization:
         result = minimal_paper.to_dict()
         
         expected_keys = {
-            "id", "title", "authors", "abstract", "publication_date",
-            "source", "categories", "url", "pdf_url", "journal_ref",
-            "doi", "download_count", "affiliations"
+            # Core fields
+            "id", "title", "authors", "source", "url",
+            # Legacy date field
+            "publication_date",
+            # Enhanced date fields
+            "date", "submitted_date", "published_date", "updated_date",
+            # Content fields
+            "abstract", "categories",
+            # Access fields
+            "pdf_url", "journal_ref", "doi",
+            # Metadata fields
+            "download_count", "affiliations", "page_count",
+            # Source-specific fields
+            "comments", "abstract_type", "publication_status", "is_paid", "is_approved"
         }
         
         assert set(result.keys()) == expected_keys

@@ -37,11 +37,12 @@ console = Console()
 
 @pytest.mark.asyncio
 async def test_search_papers_all_sources():
-    """Test searching across all sources by default"""
+    """Test searching across all sources and validate both sources contribute results"""
     console.print("\n🔍 [bold blue]Testing search_papers with all sources[/bold blue]")
     
+    # Use a query more likely to return results from both sources
     arguments = {
-        "query": "machine learning",
+        "query": "finance risk management",
         "max_results": 10
     }
     
@@ -49,7 +50,10 @@ async def test_search_papers_all_sources():
         result = await handle_search_papers(arguments)
         data = json.loads(result)
         
-        console.print(f"✅ Found {data['total_found']} papers from sources: {data['sources_searched']}")
+        # Enhanced logging for debugging
+        console.print(f"🔍 Sources searched: {data['sources_searched']}")
+        console.print(f"📊 Source breakdown: {data.get('source_breakdown', {})}")
+        console.print(f"📄 Total papers found: {data['total_found']}")
         
         # Verify basic structure
         required_fields = ["search_query", "sources_searched", "total_found", "papers", "source_breakdown"]
@@ -62,15 +66,63 @@ async def test_search_papers_all_sources():
         if len(data["sources_searched"]) < 2:
             console.print(f"❌ Expected multiple sources, got: {data['sources_searched']}")
             return False
+        
+        # NEW: Validate source breakdown - both sources should have contributed papers
+        source_breakdown = data.get("source_breakdown", {})
+        expected_sources = ["arXiv", "SSRN"]
+        
+        sources_with_papers = [source for source, count in source_breakdown.items() if count > 0]
+        
+        # Check if both sources contributed papers
+        if len(sources_with_papers) >= 2:
+            console.print(f"✅ Multiple sources contributed papers: {sources_with_papers}")
             
-        # Check papers have source field
+            # Verify both expected sources contributed
+            for expected_source in expected_sources:
+                if expected_source not in sources_with_papers:
+                    console.print(f"⚠️ Expected papers from {expected_source}, but got 0 papers")
+                    
+        else:
+            # Allow for case where only one source returns results (real-world API behavior)
+            console.print(f"⚠️ Only {sources_with_papers} returned results. This may be expected for some queries.")
+            console.print(f"   Source breakdown: {source_breakdown}")
+            
+            # Still require at least one source to have results
+            if len(sources_with_papers) == 0:
+                console.print(f"❌ No sources returned papers")
+                return False
+        
+        # NEW: Verify paper source distribution
         if data["papers"]:
+            paper_sources = set(paper["source"] for paper in data["papers"])
+            
+            # Count papers per source
+            source_counts = {}
+            for paper in data["papers"]:
+                source = paper["source"]
+                source_counts[source] = source_counts.get(source, 0) + 1
+            
+            console.print(f"📊 Paper distribution: {source_counts}")
+            
+            # Show distribution of first few papers for verification
+            for i, paper in enumerate(data["papers"][:3]):
+                console.print(f"   Paper {i+1}: {paper['source']} - {paper['title'][:50]}...")
+                
+            # Check papers have source field
             for i, paper in enumerate(data["papers"][:3]):  # Check first 3
                 if "source" not in paper:
                     console.print(f"❌ Paper {i} missing source field")
                     return False
                     
-        console.print("✅ All sources test passed")
+            # Validate source consistency
+            for source in paper_sources:
+                if source not in expected_sources:
+                    console.print(f"❌ Unexpected source in papers: {source}")
+                    return False
+        else:
+            console.print("ℹ️ No papers returned to validate source distribution")
+            
+        console.print("✅ Multi-source validation test passed")
         return True
         
     except Exception as e:

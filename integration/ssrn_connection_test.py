@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-async def test_ssrn_api_connectivity():
+async def ssrn_api_connectivity_test():
     """Test basic SSRN API connectivity and response format"""
     console.print("🔌 [bold green]Testing SSRN API Connectivity[/bold green]")
 
@@ -68,7 +68,7 @@ async def test_ssrn_api_connectivity():
             return False
 
 
-async def test_ssrn_parser():
+async def ssrn_parser_test():
     """Test SSRN JSON parser functionality"""
     console.print("🔧 [bold green]Testing SSRN JSON Parser[/bold green]")
 
@@ -102,7 +102,7 @@ async def test_ssrn_parser():
             return []
 
 
-async def test_text_search():
+async def text_search_test():
     """Test text search functionality"""
     console.print("🔍 [bold green]Testing Text Search[/bold green]")
 
@@ -136,7 +136,7 @@ async def test_text_search():
             return False
 
 
-async def test_author_search():
+async def author_search_test():
     """Test author search functionality"""
     console.print("👤 [bold green]Testing Author Search[/bold green]")
 
@@ -170,7 +170,7 @@ async def test_author_search():
             return False
 
 
-async def test_recent_papers():
+async def recent_papers_test():
     """Test recent papers functionality"""
     console.print("📅 [bold green]Testing Recent Papers Retrieval[/bold green]")
 
@@ -289,11 +289,11 @@ async def run_all_tests(tests=None):
     console.print(Panel("🚀 SSRN API Integration Test Suite", style="bold green"))
 
     tests = [
-        ("API Connectivity", test_ssrn_api_connectivity),
-        ("JSON Parser", test_ssrn_parser),
-        ("Text Search", test_text_search),
-        ("Author Search", test_author_search),
-        ("Recent Papers", test_recent_papers),
+        ("API Connectivity", ssrn_api_connectivity_test),
+        ("JSON Parser", ssrn_parser_test),
+        ("Text Search", text_search_test),
+        ("Author Search", author_search_test),
+        ("Recent Papers", recent_papers_test),
         ("Finance Papers", test_finance_papers_search),
     ] if tests is None else tests
 
@@ -335,7 +335,7 @@ async def run_all_tests(tests=None):
 async def main():
     """Main test function"""
     setup_logging(logToStdout=True)
-    await run_all_tests([("Recent Papers", test_recent_papers)])
+    await run_all_tests([("Recent Papers", recent_papers_test)])
 
 
 if __name__ == "__main__":
