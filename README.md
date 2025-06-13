@@ -35,4 +35,4 @@ open up MCP inspector in brower using http://127.0.0.1:XXXX (where XXXX is defau
 transport type = Streamable HTTP
 url = http://localhost:3001/mcp
 
-mroe details of usage in https://modelcontextprotocol.io/docs/tools/inspector
+more details of usage in https://modelcontextprotocol.io/docs/tools/inspector

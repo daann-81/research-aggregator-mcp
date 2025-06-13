@@ -266,7 +266,8 @@ class TestAcademicPaperStringRepresentation:
         
         result = str(paper)
         expected = "arXiv Paper: String Representation Test by John Doe, Jane Smith (2023)"
-        
+        print(result)  # For debugging purposes
+        print(expected)
         assert result == expected
 
     def test_str_with_many_authors(self):

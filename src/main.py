@@ -11,6 +11,15 @@ import logging
 
 from util.logging import setup_logging
 
+import sys
+from pathlib import Path
+
+# Add src to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.server.mcp_server import TransportType, run_mcp
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,17 +57,20 @@ Examples:
     args = parser.parse_args()
 
     # Import and run the appropriate server
+    
     if args.transport.lower() == "stdio":
-        from server.stdio_server import run_stdio
-
         setup_logging(logToStdout=False)
-        asyncio.run(run_stdio())
-    elif args.transport.lower() == "sse" or args.transport.lower() == "streamable":
-        from server.http_server import run_http
-
+        asyncio.run(run_mcp(args.host, args.port, transport=TransportType.STDIO))
+    elif args.transport.lower() == "sse":
         setup_logging(logToStdout=True)
-        asyncio.run(run_http(args.host, args.port, args.transport.lower() == "sse"))
-
+        asyncio.run(run_mcp(args.host, args.port, transport=TransportType.SSE))
+    elif args.transport.lower() == "streamable":
+        setup_logging(logToStdout=True)
+        asyncio.run(run_mcp(args.host, args.port, transport=TransportType.STREAMABLE))
+    else:
+        logger.error(f"Unsupported transport type: {args.transport}")
+        parser.print_help()
+        exit(1)
 
 if __name__ == "__main__":
     main()

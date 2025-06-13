@@ -25,18 +25,14 @@ from src.server.shared import (
     handle_search_papers,
     handle_get_all_recent_papers
 )
-from src.server.deprecated import (
-    handle_search_trading_papers,
-    handle_search_quant_finance_papers,
-    handle_get_recent_papers
-)
+
 from src.common.paper import AcademicPaper
 
 console = Console()
 
 
 @pytest.mark.asyncio
-async def test_search_papers_all_sources():
+async def search_papers_all_sources_test():
     """Test searching across all sources and validate both sources contribute results"""
     console.print("\n🔍 [bold blue]Testing search_papers with all sources[/bold blue]")
     
@@ -131,7 +127,7 @@ async def test_search_papers_all_sources():
 
 
 @pytest.mark.asyncio
-async def test_search_papers_filter_arxiv_only():
+async def search_papers_filter_arxiv_only_test():
     """Test searching arXiv only when source specified"""
     console.print("\n📚 [bold blue]Testing search_papers with arXiv filter[/bold blue]")
     
@@ -168,7 +164,7 @@ async def test_search_papers_filter_arxiv_only():
 
 
 @pytest.mark.asyncio
-async def test_search_papers_filter_ssrn_only():
+async def search_papers_filter_ssrn_only_test():
     """Test searching SSRN only when source specified"""
     console.print("\n📊 [bold blue]Testing search_papers with SSRN filter[/bold blue]")
     
@@ -205,7 +201,7 @@ async def test_search_papers_filter_ssrn_only():
 
 
 @pytest.mark.asyncio
-async def test_search_papers_invalid_source():
+async def search_papers_invalid_source_test():
     """Test error handling for invalid source"""
     console.print("\n🚫 [bold blue]Testing search_papers with invalid source[/bold blue]")
     
@@ -232,7 +228,7 @@ async def test_search_papers_invalid_source():
 
 
 @pytest.mark.asyncio
-async def test_search_papers_empty_query():
+async def search_papers_empty_query_test():
     """Test error handling for empty query"""
     console.print("\n🚫 [bold blue]Testing search_papers with empty query[/bold blue]")
     
@@ -259,7 +255,7 @@ async def test_search_papers_empty_query():
 
 
 @pytest.mark.asyncio
-async def test_get_all_recent_papers_all_sources():
+async def get_all_recent_papers_all_sources_test():
     """Test getting recent papers from all sources"""
     console.print("\n📅 [bold blue]Testing get_all_recent_papers with all sources[/bold blue]")
     
@@ -299,7 +295,7 @@ async def test_get_all_recent_papers_all_sources():
 
 
 @pytest.mark.asyncio
-async def test_metadata_preservation():
+async def metadata_preservation_test():
     """Test that all metadata is preserved for caller assessment"""
     console.print("\n📝 [bold blue]Testing metadata preservation[/bold blue]")
     
@@ -346,13 +342,13 @@ async def run_integration_tests(tests=None):
     console.print("🎯 [bold green]Running Unified Search Integration Tests[/bold green]")
     
     tests = [
-        ("Search Papers - All Sources", test_search_papers_all_sources),
-        ("Search Papers - arXiv Filter", test_search_papers_filter_arxiv_only),
-        ("Search Papers - SSRN Filter", test_search_papers_filter_ssrn_only),
-        ("Search Papers - Invalid Source", test_search_papers_invalid_source),
-        ("Search Papers - Empty Query", test_search_papers_empty_query),
-        ("Recent Papers - All Sources", test_get_all_recent_papers_all_sources),
-        ("Search Papers - Metadata Preservation", test_metadata_preservation),
+        ("Search Papers - All Sources", search_papers_all_sources_test),
+        ("Search Papers - arXiv Filter", search_papers_filter_arxiv_only_test),
+        ("Search Papers - SSRN Filter", search_papers_filter_ssrn_only_test),
+        ("Search Papers - Invalid Source", search_papers_invalid_source_test),
+        ("Search Papers - Empty Query", search_papers_empty_query_test),
+        ("Recent Papers - All Sources", get_all_recent_papers_all_sources_test),
+        ("Search Papers - Metadata Preservation", metadata_preservation_test),
     ] if tests is None else tests
     
     results = []

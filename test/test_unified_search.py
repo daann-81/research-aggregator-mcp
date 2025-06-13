@@ -22,11 +22,7 @@ from src.server.shared import (
     handle_search_papers,
     handle_get_all_recent_papers
 )
-from src.server.deprecated import (
-    handle_search_trading_papers,
-    handle_search_quant_finance_papers,
-    handle_get_recent_papers
-)
+
 from src.common.paper import AcademicPaper
 from src.arxiv.parser import ArxivPaper
 from src.ssrn.parser import SSRNPaper

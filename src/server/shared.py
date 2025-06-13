@@ -27,22 +27,83 @@ from src.common.paper import AcademicPaper, from_arxiv_paper, from_ssrn_paper
 # Setup Rich logging
 logger = logging.getLogger(__name__)
 
-# Define shared input schemas
-DATE_RANGE_SCHEMA = {
-    "start_date": {
-        "type": "string",
-        "description": "Start date in YYYY-MM-DD format (optional, defaults to 6 months ago)"
-    },
-    "end_date": {
-        "type": "string", 
-        "description": "End date in YYYY-MM-DD format (optional, defaults to today)"
-    },
-    "max_results": {
-        "type": "integer",
-        "description": "Maximum number of papers to return (default: 200, max: 2000)",
-        "default": 200
-    }
-}
+# Configuration constants
+DEFAULT_DELAY_SECONDS = 3.0
+DEFAULT_MAX_RESULTS_SEARCH = 20
+DEFAULT_MAX_RESULTS_RECENT = 50
+DEFAULT_TIMEOUT = 30.0
+
+
+async def _search_arxiv_source(query: str, max_results: int, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Tuple[List[AcademicPaper], Optional[str]]:
+    """
+    Search arXiv and return converted AcademicPaper objects.
+    
+    Returns:
+        Tuple of (papers list, error message if any)
+    """
+    try:
+        logger.info(f"📚 Searching arXiv for: {query}")
+        async with AsyncArxivClient(delay_seconds=DEFAULT_DELAY_SECONDS) as arxiv_client:
+            if start_date and end_date:
+                xml_data = await arxiv_client.search_papers(query, start_date, end_date, max_results=max_results)
+            else:
+                xml_data = await arxiv_client.search_papers(query, max_results=max_results)
+            
+            # Parse to ArxivPaper objects
+            arxiv_parser = ArxivXMLParser()
+            arxiv_papers = arxiv_parser.parse_response(xml_data)
+            
+            # Convert to AcademicPaper objects
+            academic_papers = [from_arxiv_paper(paper) for paper in arxiv_papers]
+            
+            logger.info(f"✅ Found {len(academic_papers)} papers from arXiv")
+            return academic_papers, None
+            
+    except Exception as e:
+        error_msg = str(e)
+        logger.warning(f"⚠️ arXiv search failed: {error_msg}")
+        return [], error_msg
+
+
+async def _search_ssrn_source(query: Optional[str] = None, max_results: int = DEFAULT_MAX_RESULTS_SEARCH, months_back: Optional[int] = None) -> Tuple[List[AcademicPaper], Optional[str]]:
+    """
+    Search SSRN and return converted AcademicPaper objects.
+    
+    Args:
+        query: Search query (for text search) 
+        max_results: Maximum results to return
+        months_back: Get recent papers from last N months (for recent papers search)
+    
+    Returns:
+        Tuple of (papers list, error message if any)
+    """
+    try:
+        logger.info(f"📊 Searching SSRN for: {query or f'recent papers ({months_back} months)'}")
+        async with AsyncSSRNClient(delay_seconds=DEFAULT_DELAY_SECONDS) as ssrn_client:
+            if months_back is not None:
+                # Get recent papers
+                ssrn_raw_papers = await ssrn_client.get_recent_papers(months_back=months_back, max_results=max_results)
+            else:
+                # Text search - query is guaranteed to be str here
+                if not query:
+                    raise ValueError("Query is required for SSRN text search")
+                ssrn_raw_papers = await ssrn_client.search_papers(query, max_results=max_results)
+            
+            # Parse to SSRNPaper objects
+            ssrn_parser = SSRNJSONParser()
+            ssrn_response = {"papers": ssrn_raw_papers}
+            ssrn_papers = ssrn_parser.parse_response(ssrn_response)
+            
+            # Convert to AcademicPaper objects
+            academic_papers = [from_ssrn_paper(paper) for paper in ssrn_papers]
+            
+            logger.info(f"✅ Found {len(academic_papers)} papers from SSRN")
+            return academic_papers, None
+            
+    except Exception as e:
+        error_msg = str(e)
+        logger.warning(f"⚠️ SSRN search failed: {error_msg}")
+        return [], error_msg
 
 
 def get_category_breakdown(papers) -> Dict[str, int]:
@@ -56,6 +117,65 @@ def get_category_breakdown(papers) -> Dict[str, int]:
 
 
 # Unified search handlers
+class BaseSearchHandler:
+    """
+    Base class for handling multi-source academic paper searches.
+    
+    Provides common functionality for validating parameters, coordinating
+    searches across multiple sources, and formatting results.
+    """
+    
+    @staticmethod
+    def _validate_source(source: str) -> None:
+        """Validate source parameter."""
+        if source not in ["all", "arxiv", "ssrn"]:
+            raise ValueError("Invalid source")
+    
+    @staticmethod
+    def _get_sources_to_search(source: str) -> List[str]:
+        """Get list of sources to search based on source parameter."""
+        return ["arxiv", "ssrn"] if source == "all" else [source]
+    
+    @staticmethod
+    async def _collect_papers_from_sources(
+        sources_to_search: List[str],
+        search_func_arxiv,
+        search_func_ssrn
+    ) -> Tuple[List[AcademicPaper], List[str], Dict[str, str], Dict[str, int]]:
+        """
+        Collect papers from specified sources using provided search functions.
+        
+        Returns:
+            Tuple of (all_papers, sources_searched, source_errors, source_breakdown)
+        """
+        all_papers = []
+        sources_searched = []
+        source_errors = {}
+        source_breakdown = {}
+        
+        # Search arXiv if requested
+        if "arxiv" in sources_to_search:
+            arxiv_papers, arxiv_error = await search_func_arxiv()
+            if arxiv_error:
+                source_errors["arXiv"] = arxiv_error
+            else:
+                all_papers.extend(arxiv_papers)
+                sources_searched.append("arXiv")
+                source_breakdown["arXiv"] = len(arxiv_papers)
+        
+        # Search SSRN if requested  
+        if "ssrn" in sources_to_search:
+            ssrn_papers, ssrn_error = await search_func_ssrn()
+            if ssrn_error:
+                source_errors["SSRN"] = ssrn_error
+            else:
+                all_papers.extend(ssrn_papers)
+                sources_searched.append("SSRN")
+                source_breakdown["SSRN"] = len(ssrn_papers)
+        
+        return all_papers, sources_searched, source_errors, source_breakdown
+
+
 async def handle_search_papers(arguments: Dict[str, Any]) -> str:
     """
     Handle unified search_papers tool across multiple sources.
@@ -66,81 +186,29 @@ async def handle_search_papers(arguments: Dict[str, Any]) -> str:
         # Extract parameters
         query = arguments.get("query", "")
         source = arguments.get("source", "all")
-        max_results = arguments.get("max_results", 20)
-        timeout = arguments.get("timeout", 30.0)  # Reserved for future use - clients use default timeouts
+        max_results = arguments.get("max_results", DEFAULT_MAX_RESULTS_SEARCH)
         
         if not query:
             raise ValueError("query cannot be empty")
         
-        if source not in ["all", "arxiv", "ssrn"]:
-            raise ValueError("Invalid source")
+        BaseSearchHandler._validate_source(source)
         
         logger.info(f"🔍 Unified search for '{query}' across {source} source(s)")
         
         # Determine which sources to search
-        sources_to_search = []
-        if source == "all":
-            sources_to_search = ["arxiv", "ssrn"]
-        else:
-            sources_to_search = [source]
+        sources_to_search = BaseSearchHandler._get_sources_to_search(source)
         
-        # Collect papers from each source
-        all_papers = []
-        sources_searched = []
-        source_errors = {}
-        source_breakdown = {}
+        # Define search functions for each source
+        async def search_arxiv():
+            return await _search_arxiv_source(query, max_results)
         
-        # Search arXiv if requested
-        if "arxiv" in sources_to_search:
-            try:
-                logger.info(f"📚 Searching arXiv for: {query}")
-                async with AsyncArxivClient(delay_seconds=3.0) as arxiv_client:
-                    # Search arXiv using general search
-                    xml_data = await arxiv_client.search_papers(query, max_results=max_results)
-                    
-                    # Parse to ArxivPaper objects
-                    arxiv_parser = ArxivXMLParser()
-                    arxiv_papers = arxiv_parser.parse_response(xml_data)
-                    
-                    # Convert to AcademicPaper objects
-                    for paper in arxiv_papers:
-                        academic_paper = from_arxiv_paper(paper)
-                        all_papers.append(academic_paper)
-                    
-                    sources_searched.append("arXiv")
-                    source_breakdown["arXiv"] = len(arxiv_papers)
-                    logger.info(f"✅ Found {len(arxiv_papers)} papers from arXiv")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ arXiv search failed: {e}")
-                source_errors["arXiv"] = str(e)
+        async def search_ssrn():
+            return await _search_ssrn_source(query=query, max_results=max_results)
         
-        # Search SSRN if requested  
-        if "ssrn" in sources_to_search:
-            try:
-                logger.info(f"📊 Searching SSRN for: {query}")
-                async with AsyncSSRNClient(delay_seconds=3.0) as ssrn_client:
-                    # Search SSRN using text search
-                    ssrn_raw_papers = await ssrn_client.search_papers(query, max_results=max_results)
-                    
-                    # Parse to SSRNPaper objects
-                    ssrn_parser = SSRNJSONParser()
-                    # Wrap raw papers list in expected format for parser
-                    ssrn_response = {"papers": ssrn_raw_papers}
-                    ssrn_papers = ssrn_parser.parse_response(ssrn_response)
-                    
-                    # Convert to AcademicPaper objects
-                    for paper in ssrn_papers:
-                        academic_paper = from_ssrn_paper(paper)
-                        all_papers.append(academic_paper)
-                    
-                    sources_searched.append("SSRN")
-                    source_breakdown["SSRN"] = len(ssrn_papers)
-                    logger.info(f"✅ Found {len(ssrn_papers)} papers from SSRN")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ SSRN search failed: {e}")
-                source_errors["SSRN"] = str(e)
+        # Collect papers from sources
+        all_papers, sources_searched, source_errors, source_breakdown = await BaseSearchHandler._collect_papers_from_sources(
+            sources_to_search, search_arxiv, search_ssrn
+        )
         
         # Process papers: aggregate, sort by date, and limit results
         aggregated_papers, aggregation_stats = process_papers(all_papers, max_results)
@@ -177,7 +245,7 @@ async def handle_get_all_recent_papers(arguments: Dict[str, Any]) -> str:
         # Extract parameters
         months_back = arguments.get("months_back")
         source = arguments.get("source", "all")
-        max_results = arguments.get("max_results", 50)
+        max_results = arguments.get("max_results", DEFAULT_MAX_RESULTS_RECENT)
         
         if not months_back:
             raise ValueError("months_back is required")
@@ -185,8 +253,7 @@ async def handle_get_all_recent_papers(arguments: Dict[str, Any]) -> str:
         if months_back <= 0:
             raise ValueError("months_back must be positive")
         
-        if source not in ["all", "arxiv", "ssrn"]:
-            raise ValueError("Invalid source")
+        BaseSearchHandler._validate_source(source)
         
         # Calculate date range
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -195,69 +262,20 @@ async def handle_get_all_recent_papers(arguments: Dict[str, Any]) -> str:
         logger.info(f"📅 Getting recent papers from {source} source(s) over last {months_back} months")
         
         # Determine which sources to search
-        sources_to_search = []
-        if source == "all":
-            sources_to_search = ["arxiv", "ssrn"]
-        else:
-            sources_to_search = [source]
+        sources_to_search = BaseSearchHandler._get_sources_to_search(source)
         
-        # Collect papers from each source
-        all_papers = []
-        sources_searched = []
-        source_errors = {}
-        source_breakdown = {}
+        # Define search functions for each source
+        async def search_arxiv():
+            # Use broad query to get all categories
+            return await _search_arxiv_source("all:electron", max_results, start_date, end_date)
         
-        # Search arXiv if requested - get ALL categories, not just finance
-        if "arxiv" in sources_to_search:
-            try:
-                logger.info(f"📚 Getting recent arXiv papers from {start_date} to {end_date}")
-                async with AsyncArxivClient(delay_seconds=3.0) as arxiv_client:
-                    # Search ALL categories - use a broad query instead of wildcard
-                    xml_data = await arxiv_client.search_papers("all:electron", start_date, end_date, max_results=max_results)
-                    
-                    # Parse to ArxivPaper objects
-                    arxiv_parser = ArxivXMLParser()
-                    arxiv_papers = arxiv_parser.parse_response(xml_data)
-                    
-                    # Convert to AcademicPaper objects
-                    for paper in arxiv_papers:
-                        academic_paper = from_arxiv_paper(paper)
-                        all_papers.append(academic_paper)
-                    
-                    sources_searched.append("arXiv")
-                    source_breakdown["arXiv"] = len(arxiv_papers)
-                    logger.info(f"✅ Found {len(arxiv_papers)} recent papers from arXiv")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ arXiv recent papers search failed: {e}")
-                source_errors["arXiv"] = str(e)
+        async def search_ssrn():
+            return await _search_ssrn_source(max_results=max_results, months_back=months_back)
         
-        # Search SSRN if requested
-        if "ssrn" in sources_to_search:
-            try:
-                logger.info(f"📊 Getting recent SSRN papers from last {months_back} months")
-                async with AsyncSSRNClient(delay_seconds=3.0) as ssrn_client:
-                    # Get recent papers from SSRN
-                    ssrn_raw_papers = await ssrn_client.get_recent_papers(months_back=months_back, max_results=max_results)
-                    
-                    # Parse to SSRNPaper objects
-                    ssrn_parser = SSRNJSONParser()
-                    # Wrap raw papers list in expected format for parser
-                    ssrn_response = {"papers": ssrn_raw_papers}
-                    ssrn_papers = ssrn_parser.parse_response(ssrn_response)
-                    
-                    # Convert to AcademicPaper objects
-                    for paper in ssrn_papers:
-                        academic_paper = from_ssrn_paper(paper)
-                        all_papers.append(academic_paper)
-                    
-                    sources_searched.append("SSRN")
-                    source_breakdown["SSRN"] = len(ssrn_papers)
-                    logger.info(f"✅ Found {len(ssrn_papers)} recent papers from SSRN")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ SSRN recent papers search failed: {e}")
-                source_errors["SSRN"] = str(e)
+        # Collect papers from sources
+        all_papers, sources_searched, source_errors, source_breakdown = await BaseSearchHandler._collect_papers_from_sources(
+            sources_to_search, search_arxiv, search_ssrn
+        )
         
         # Process papers: aggregate, sort by date, and limit results
         aggregated_papers, aggregation_stats = process_papers(all_papers, max_results)
@@ -395,8 +413,11 @@ def _merge_papers(papers: List[AcademicPaper]) -> AcademicPaper:
     if len(papers) == 1:
         return papers[0]
     
+    def get_sort_date(paper) -> datetime:
+        return paper.publication_date if paper.publication_date is not None else datetime.min
+
     # Sort by publication date (most recent first) for primary paper selection
-    sorted_papers = sorted(papers, key=lambda p: p.publication_date, reverse=True)
+    sorted_papers = sorted(papers, key=get_sort_date, reverse=True)
     primary_paper = sorted_papers[0]
     
     # Collect all sources and URLs

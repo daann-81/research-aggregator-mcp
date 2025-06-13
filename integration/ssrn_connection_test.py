@@ -209,7 +209,7 @@ async def recent_papers_test():
             return False
 
 
-async def test_finance_papers_search():
+async def finance_papers_search_test():
     """Test finance-specific papers search"""
     console.print("💰 [bold green]Testing Finance Papers Search[/bold green]")
 
@@ -294,7 +294,7 @@ async def run_all_tests(tests=None):
         ("Text Search", text_search_test),
         ("Author Search", author_search_test),
         ("Recent Papers", recent_papers_test),
-        ("Finance Papers", test_finance_papers_search),
+        ("Finance Papers", finance_papers_search_test),
     ] if tests is None else tests
 
     results = []

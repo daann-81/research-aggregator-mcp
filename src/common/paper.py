@@ -8,7 +8,7 @@ for normalizing papers from different sources (arXiv, SSRN) into a common format
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Union
+from typing import ClassVar, List, Optional, Dict, Any, Union
 
 # Import paper classes from different sources
 import sys
@@ -33,7 +33,7 @@ class AcademicPaper:
     id: str
     title: str
     authors: List[str]
-    publication_date: datetime  # Legacy field - kept for backward compatibility
+    publication_date: Optional[datetime]  # Legacy field - kept for backward compatibility
     source: Union[str, List[str]]  # Single source or list for aggregated papers
     url: str
     
@@ -64,6 +64,47 @@ class AcademicPaper:
     is_paid: Optional[bool] = None
     is_approved: Optional[bool] = None
     
+    _FIELD_DESCRIPTIONS: ClassVar[Dict[str, str]] = {
+            # Core identification fields
+            'id': 'Unique identifier from the source database (arXiv ID format like "2312.12345" or SSRN ID number)',
+            'title': 'Official paper title as provided by the source, searchable and indexed for discovery',
+            'authors': 'List of author names in source order, containing the full names as provided by the publication database',
+            'source': 'Source database name(s) - single source string (e.g., "arXiv", "SSRN") or list for aggregated papers from multiple sources',
+            'url': 'Primary URL for accessing the paper abstract and details page on the source platform',
+            
+            # Enhanced date fields  
+            'date': 'Most recent date available - computed as the maximum of submitted_date, published_date, and updated_date',
+            'submitted_date': 'Date when paper was first submitted to the platform (arXiv: <published> field, when version 1 was submitted)',
+            'published_date': 'Date when paper was officially published or approved (SSRN: approved_date when paper passed editorial review)',
+            'updated_date': 'Date when paper was last updated or revised (arXiv: <updated> field for the specific version)',
+            
+            # Content fields
+            'abstract': 'Paper abstract or summary (arXiv: <summary> element; SSRN: may be unavailable via API)',
+            'categories': 'Subject classification categories (arXiv: primary category and additional categories using arXiv taxonomy like "q-fin.TR")',
+            
+            # Access fields
+            'pdf_url': 'Direct URL for PDF download when available (arXiv: link with title="pdf"; SSRN: typically not provided)',
+            'doi': 'Digital Object Identifier for published papers (arXiv: <arxiv:doi> element when paper is published in journal)',
+            'journal_ref': 'Journal reference when paper is published in a journal (arXiv: <arxiv:journal_ref>; SSRN: reference field)',
+            
+            # Metadata fields
+            'download_count': 'Number of times paper has been downloaded (SSRN: download tracking; arXiv: not provided)',
+            'affiliations': 'Author institutional affiliations (SSRN: university_affiliations; arXiv: optional <arxiv:affiliation>)',
+            'page_count': 'Number of pages in the document (SSRN: page_count field; arXiv: may be mentioned in comments)',
+            
+            # ArxivPaper-specific fields
+            'comments': 'Author-provided comments and metadata (arXiv: <arxiv:comment> element, often includes page count, figures, conference info)',
+            
+            # SSRNPaper-specific fields  
+            'abstract_type': 'Type or category of abstract in SSRN system (e.g., "Working Paper", "Executive Summary")',
+            'publication_status': 'Current publication status in SSRN workflow (e.g., "Published", "Under Review")',
+            'is_paid': 'Whether paper requires payment for full access (SSRN premium content access model)',
+            'is_approved': 'Whether paper has been approved by SSRN editorial review process',
+            
+            # Aggregation fields
+            'source_urls': 'Maps source name to URL for papers aggregated from multiple sources (e.g., {"arXiv": "...", "SSRN": "..."})'
+        }
+    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert AcademicPaper to dictionary for JSON serialization.
@@ -76,7 +117,7 @@ class AcademicPaper:
             "title": self.title,
             "authors": self.authors,
             "abstract": self.abstract,
-            "publication_date": self.publication_date.isoformat(),
+            "publication_date": self.publication_date.isoformat() if self.publication_date else None,
             "source": self.source,
             "categories": self.categories,
             "url": self.url,
@@ -144,47 +185,15 @@ class AcademicPaper:
         Returns:
             Dictionary mapping field names to their official descriptions
         """
-        return {
-            # Core identification fields
-            'id': 'Unique identifier from the source database (arXiv ID format like "2312.12345" or SSRN ID number)',
-            'title': 'Official paper title as provided by the source, searchable and indexed for discovery',
-            'authors': 'List of author names in source order, containing the full names as provided by the publication database',
-            'source': 'Source database name(s) - single source string (e.g., "arXiv", "SSRN") or list for aggregated papers from multiple sources',
-            'url': 'Primary URL for accessing the paper abstract and details page on the source platform',
-            
-            # Enhanced date fields  
-            'date': 'Most recent date available - computed as the maximum of submitted_date, published_date, and updated_date',
-            'submitted_date': 'Date when paper was first submitted to the platform (arXiv: <published> field, when version 1 was submitted)',
-            'published_date': 'Date when paper was officially published or approved (SSRN: approved_date when paper passed editorial review)',
-            'updated_date': 'Date when paper was last updated or revised (arXiv: <updated> field for the specific version)',
-            
-            # Content fields
-            'abstract': 'Paper abstract or summary (arXiv: <summary> element; SSRN: may be unavailable via API)',
-            'categories': 'Subject classification categories (arXiv: primary category and additional categories using arXiv taxonomy like "q-fin.TR")',
-            
-            # Access fields
-            'pdf_url': 'Direct URL for PDF download when available (arXiv: link with title="pdf"; SSRN: typically not provided)',
-            'doi': 'Digital Object Identifier for published papers (arXiv: <arxiv:doi> element when paper is published in journal)',
-            'journal_ref': 'Journal reference when paper is published in a journal (arXiv: <arxiv:journal_ref>; SSRN: reference field)',
-            
-            # Metadata fields
-            'download_count': 'Number of times paper has been downloaded (SSRN: download tracking; arXiv: not provided)',
-            'affiliations': 'Author institutional affiliations (SSRN: university_affiliations; arXiv: optional <arxiv:affiliation>)',
-            'page_count': 'Number of pages in the document (SSRN: page_count field; arXiv: may be mentioned in comments)',
-            
-            # ArxivPaper-specific fields
-            'comments': 'Author-provided comments and metadata (arXiv: <arxiv:comment> element, often includes page count, figures, conference info)',
-            
-            # SSRNPaper-specific fields  
-            'abstract_type': 'Type or category of abstract in SSRN system (e.g., "Working Paper", "Executive Summary")',
-            'publication_status': 'Current publication status in SSRN workflow (e.g., "Published", "Under Review")',
-            'is_paid': 'Whether paper requires payment for full access (SSRN premium content access model)',
-            'is_approved': 'Whether paper has been approved by SSRN editorial review process',
-            
-            # Aggregation fields
-            'source_urls': 'Maps source name to URL for papers aggregated from multiple sources (e.g., {"arXiv": "...", "SSRN": "..."})'
-        }
-    
+
+        return cls._FIELD_DESCRIPTIONS
+
+    @classmethod
+    def get_field_descriptions_as_markdown(cls) -> str:
+        lines = ["Descriptions of avaialble fields for each paper:"] \
+            + [f"- {key}: {value}" for key, value in cls._FIELD_DESCRIPTIONS.items()]
+        return "\n".join(lines)
+
     @classmethod  
     def get_field_description(cls, field_name: str) -> str:
         """
@@ -196,8 +205,8 @@ class AcademicPaper:
         Returns:
             Field description string, or empty string if field not found
         """
-        descriptions = cls.get_field_descriptions()
-        return descriptions.get(field_name, "")
+
+        return cls._FIELD_DESCRIPTIONS.get(field_name, "")
     
     def to_dict_with_descriptions(self) -> Dict[str, Any]:
         """
@@ -216,7 +225,7 @@ class AcademicPaper:
         if len(self.authors) > 3:
             authors_str += f" et al. ({len(self.authors)} total)"
         
-        return f"{self.source} Paper: {self.title} by {authors_str} ({self.publication_date.year})"
+        return f"{self.source} Paper: {self.title} by {authors_str} ({self.publication_date.year if self.publication_date else 'Unknown Year'})"
 
 
 # Conversion functions (skeleton implementation - no actual conversion logic)

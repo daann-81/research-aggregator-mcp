@@ -201,7 +201,8 @@ class TestAcademicPaperDescriptions:
     def test_get_field_descriptions_returns_all_fields(self):
         """Test get_field_descriptions() returns description for every field."""
         descriptions = AcademicPaper.get_field_descriptions()
-        
+        if isinstance(descriptions, str):
+            pytest.fail("get_field_descriptions returned a string instead of a dict")
         # Should have descriptions for all fields
         expected_fields = {
             'id', 'title', 'authors', 'source', 'url', 'date',
@@ -231,7 +232,8 @@ class TestAcademicPaperDescriptions:
     def test_field_descriptions_not_empty(self):
         """Test all field descriptions contain meaningful content."""
         descriptions = AcademicPaper.get_field_descriptions()
-        
+        if isinstance(descriptions, str):
+            pytest.fail("get_field_descriptions returned a string instead of a dict")
         for field, desc in descriptions.items():
             assert len(desc) > 10, f"Description too short for {field}: {desc}"
             assert not desc.startswith("TODO"), f"Placeholder description for {field}: {desc}"
@@ -239,7 +241,8 @@ class TestAcademicPaperDescriptions:
     def test_field_descriptions_contain_source_info(self):
         """Test field descriptions reference their source systems when applicable."""
         descriptions = AcademicPaper.get_field_descriptions()
-        
+        if isinstance(descriptions, str):
+            pytest.fail("get_field_descriptions returned a string instead of a dict")
         # ArxivPaper-specific fields should mention arXiv
         assert 'arXiv' in descriptions['comments'], "comments description should mention arXiv"
         
